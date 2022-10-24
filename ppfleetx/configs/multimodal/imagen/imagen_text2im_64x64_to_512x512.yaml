@@ -6,11 +6,22 @@ Global:
   micro_batch_size: 1
 
 
+Engine:
+  logging_freq: 10
+  mix_precision:
+    use_pure_fp16: False 
+    scale_loss: 32768.0
+    custom_black_list: ["reduce_sum", "c_softmax_with_cross_entropy", "elementwise_div"]
+    custom_white_list: ["lookup_table", "lookup_table_v2"]
+    ckpt_dir:
+
 Model:
-  name: imagen_SR512
-  text_encoder_name: t5/t5-11b
+  module: "ImagenSampleModule"
+  fused_linear: False
+  name: imagen_64to512
+  text_encoder_name: t5-11b
   text_embed_dim: 1024 
-  timesteps: 1000 
+  timesteps: 50
   in_chans: 3
   cond_drop_prob: 0.1
   noise_schedules: cosine
@@ -21,33 +32,31 @@ Model:
   condition_on_text: True
   auto_normalize_img: True
   p2_loss_weight_gamma: 0.5
-  dynamic_thresholding: True,
+  dynamic_thresholding: True
   dynamic_thresholding_percentile: 0.95
   only_train_unet_number: 1 
+  return_all_unet_outputs: True
+  use_t5: True
   use_recompute: False
 
+# data loader for train
 Data:
-  Train:
+  train:
     dataset:
-      name: ImagenDataset
+      name: TextDataset
       input_path: ./data/cc12m_base64.lst
       shuffle: True
-      input_resolusion: 512 
+      input_resolusion: 64 
       max_seq_len: 128 
     loader:
       num_workers: 8
       shuffle: True
-      batch_size: 1 
+      batch_size: 16 
       drop_last: True
       collate_fn: imagen_collate_fn
-  
-
-Loss:
-  name: mse_loss
-  p2_loss_weight_k: 1.0
 
 Distributed:
-  dp_degree: 8
+  dp_degree: 1
   mp_degree: 1
   pp_degree: 1
   sharding:
